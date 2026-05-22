@@ -41,6 +41,8 @@ class ScanCB : public NimBLEScanCallbacks {
     int8_t   tx_power      = (int8_t)md[7];
     int      rssi          = dev->getRSSI();
 
+    uint32_t now = millis();
+
     int idx = -1;
     for (int i = 0; i < MAX_SOURCES; i++)
       if (sources[i].valid && sources[i].sender_nr == sender_nr) { idx = i; break; }
@@ -49,9 +51,12 @@ class ScanCB : public NimBLEScanCallbacks {
       for (int i = 0; i < MAX_SOURCES; i++) if (!sources[i].valid) { idx = i; break; }
       if (idx < 0) return;
       sources[idx].valid          = true;
-      sources[idx].rssi_buf_idx   = 0;
-      sources[idx].rssi_buf_count = 0;
-      sources[idx].rssi_smooth    = (float)rssi;
+      sources[idx].bin_sum        = 0.0f;
+      sources[idx].bin_count      = 0;
+      sources[idx].bin_start_ms   = now;
+      sources[idx].sec_buf_idx    = 0;
+      sources[idx].sec_buf_count  = 0;
+      sources[idx].rssi_smooth    = (float)rssi;   // Sofort-Anzeige bis Bin abgeschlossen
       sources[idx].rssi_peak      = (float)rssi;
       strncpy(sources[idx].name, n.c_str(), 19);
       sources[idx].name[19] = 0;
@@ -62,17 +67,30 @@ class ScanCB : public NimBLEScanCallbacks {
     s.nuklid         = nuklid;
     s.max_dosis_100  = max_dosis_100;
     s.tx_power       = tx_power;
-    s.last_seen      = millis();
+    s.last_seen      = now;
 
-    // Moving-Average ueber die letzten RSSI_AVG_WINDOW Samples
-    s.rssi_buf[s.rssi_buf_idx] = (float)rssi;
-    s.rssi_buf_idx = (s.rssi_buf_idx + 1) % RSSI_AVG_WINDOW;
-    if (s.rssi_buf_count < RSSI_AVG_WINDOW) s.rssi_buf_count++;
-    float sum = 0.0f;
-    for (uint8_t i = 0; i < s.rssi_buf_count; i++) sum += s.rssi_buf[i];
-    s.rssi_smooth = sum / s.rssi_buf_count;
+    // Stufe 1: in aktuelle Sekunden-Bin akkumulieren
+    s.bin_sum   += (float)rssi;
+    s.bin_count += 1;
 
-    if (s.rssi_smooth > s.rssi_peak) s.rssi_peak = s.rssi_smooth;
+    // Stufe 2: Bin abgeschlossen? -> Mittelwert in Sek-Ringbuffer, dann
+    // Moving Average ueber die letzten RSSI_AVG_SECS Sekunden-Werte
+    if ((now - s.bin_start_ms) >= RSSI_BIN_MS && s.bin_count > 0) {
+      float bin_mean = s.bin_sum / s.bin_count;
+      s.sec_buf[s.sec_buf_idx] = bin_mean;
+      s.sec_buf_idx = (s.sec_buf_idx + 1) % RSSI_AVG_SECS;
+      if (s.sec_buf_count < RSSI_AVG_SECS) s.sec_buf_count++;
+
+      float sum = 0.0f;
+      for (uint8_t i = 0; i < s.sec_buf_count; i++) sum += s.sec_buf[i];
+      s.rssi_smooth = sum / s.sec_buf_count;
+
+      if (s.rssi_smooth > s.rssi_peak) s.rssi_peak = s.rssi_smooth;
+
+      s.bin_sum      = 0.0f;
+      s.bin_count    = 0;
+      s.bin_start_ms = now;
+    }
   }
 };
 static ScanCB scanCallbacks;
@@ -87,9 +105,14 @@ static void startScan() {
   bleScan->setInterval(100);
   bleScan->setWindow(50);
 
-  // TODO: Coded PHY (BLE 5 LR) per Extended Scan aktivieren.
-  // Exakte API in NimBLE-Arduino 2.x noch zu pruefen.
-  (void)currentBleMode;
+#if CONFIG_BT_NIMBLE_EXT_ADV
+  // PHY-Auswahl:
+  //   Normal -> 1M (Legacy Advertising, kompatibel mit BLE 4+)
+  //   LR     -> Coded PHY (BLE 5 Extended Advertising, S=8, lange Reichweite)
+  bleScan->setPhy(currentBleMode == BLE_LR
+                  ? NimBLEScan::SCAN_CODED
+                  : NimBLEScan::SCAN_1M);
+#endif
 
   bleScan->start(0, false);
 }

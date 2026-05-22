@@ -30,9 +30,13 @@
 // ---- BLE / Sources ----
 #define MAX_SOURCES         16
 #define SOURCE_TIMEOUT_MS   5000
-// Gleitender Mittelwert ueber die letzten N RSSI-Samples (-> rssi_smooth).
-// 5 = sanfte Anzeige, 3 = schnellere Reaktion, 10 = sehr ruhig aber traege.
-#define RSSI_AVG_WINDOW     5
+// Zweistufige RSSI-Mittelung:
+//   1) Alle Samples einer RSSI_BIN_MS-Periode -> Sekunden-Mittelwert
+//   2) Moving Average ueber die letzten RSSI_AVG_SECS Sekunden-Mittelwerte
+// Gesamt-Mittelungszeit = RSSI_BIN_MS * RSSI_AVG_SECS / 1000 Sekunden.
+// Anzeige aktualisiert sich nur bei Bin-Abschluss (1x pro Sekunde).
+#define RSSI_BIN_MS         1000
+#define RSSI_AVG_SECS       3
 
 // ---- Buttons ----
 #define BTN_DEBOUNCE_MS     30

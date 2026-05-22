@@ -10,7 +10,7 @@ Hardware: **LilyGO T-Display-S3 AMOLED** (ESP32-S3 R8, 1.91" RM67162 QSPI, 536x2
 
 ## Funktionen
 
-- BLE-Scan auf 1M-PHY (Normal) und Coded-PHY/LR (Umschaltbar im Menue — siehe TODO unten)
+- BLE-Scan auf 1M-PHY (Normal) und Coded-PHY/LR (Umschaltbar im Menue)
 - Filter auf Geraete-Namen `Strahler-NNN`, anschliessend Manufacturer-Data CRC-Pruefung
 - Dosis-Berechnung aus Manufacturer-Data Werten + RSSI-Pfadverlust + Abstandsquadratgesetz
 - Auto-Range-Anzeige (nSv/uSv/mSv-Skala je nach `max_dosis` der gewaehlten Quelle)
@@ -151,13 +151,6 @@ Build-Flags (in `platformio.ini`):
 ---
 
 ## Offene Punkte / TODO
-
-- **LR-Mode-PHY-Switch:** Der Menue-Toggle setzt aktuell nur das Flag
-  `currentBleMode = BLE_LR`, der NimBLE-Stack scannt jedoch weiterhin
-  auf 1M-PHY. Der echte Switch auf Coded-PHY muss noch implementiert
-  werden — exakte API in NimBLE-Arduino 2.x: vermutlich `setPhy()` oder
-  via `enableExtendedScan() + setExtScanPhy()`. Siehe `src/ble.cpp`
-  → `startScan()`.
 
 - **Persistente Owner-Info:** `OWNER` struct in `src/owner.cpp` ist
   derzeit hartkodiert. Spaeter z.B. ueber NVS-Storage befuellbar machen.
