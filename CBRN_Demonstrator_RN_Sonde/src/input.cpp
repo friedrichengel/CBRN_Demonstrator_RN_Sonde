@@ -1,0 +1,52 @@
+// ================================================================
+// input.cpp - Tasten-Routing pro Screen
+// ================================================================
+#include <Arduino.h>
+#include "input.h"
+#include "buttons.h"
+#include "state.h"
+#include "config.h"
+#include "ble.h"
+#include "audio.h"
+
+static void handleMenuSelect() {
+  menuLastInputMs = millis();
+  playClick();
+  switch (menuIndex) {
+    case 0: switchBleMode(currentBleMode == BLE_NORMAL ? BLE_LR : BLE_NORMAL); break;
+    case 1: audioEnabled = !audioEnabled;                                       break;
+    case 2: currentScreen = SCR_SOURCES; sourceBrowseIdx = 0;                   break;
+    case 3: currentScreen = SCR_OWNER;                                          break;
+    case 4: offRequested = true;                                                break;
+  }
+}
+
+void handleButtons() {
+  BtnEvent eHW = readBtn(btnHW);
+  BtnEvent eA  = readBtn(btnA);
+  BtnEvent eB  = readBtn(btnB);
+
+  if (currentScreen == SCR_GAUGE) {
+    if      (eHW == BTN_SHORT) { currentScreen = SCR_MENU; menuIndex = 0; menuLastInputMs = millis(); }
+    else if (eHW == BTN_LONG)  { offRequested = true; }
+    else if (eA  == BTN_SHORT) { audioEnabled = !audioEnabled; }
+    else if (eB  == BTN_SHORT) { switchBleMode(currentBleMode == BLE_NORMAL ? BLE_LR : BLE_NORMAL); }
+  }
+  else if (currentScreen == SCR_MENU) {
+    if      (eHW == BTN_SHORT) { handleMenuSelect(); }
+    else if (eHW == BTN_LONG)  { currentScreen = SCR_GAUGE; }
+    else if (eA  == BTN_SHORT) { menuIndex = (menuIndex + MENU_ITEMS - 1) % MENU_ITEMS; menuLastInputMs = millis(); }
+    else if (eB  == BTN_SHORT) { menuIndex = (menuIndex + 1) % MENU_ITEMS;              menuLastInputMs = millis(); }
+    if (millis() - menuLastInputMs > MENU_TIMEOUT_MS) currentScreen = SCR_GAUGE;
+  }
+  else if (currentScreen == SCR_OWNER) {
+    if (eHW == BTN_SHORT || eA == BTN_SHORT || eB == BTN_SHORT)
+      currentScreen = SCR_MENU;
+  }
+  else if (currentScreen == SCR_SOURCES) {
+    if      (eHW == BTN_LONG)  { currentScreen = SCR_MENU; }
+    else if (eHW == BTN_SHORT) { currentScreen = SCR_MENU; }
+    else if (eA  == BTN_SHORT) { sourceBrowseIdx++; }
+    else if (eB  == BTN_SHORT) { sourceBrowseIdx--; }
+  }
+}
