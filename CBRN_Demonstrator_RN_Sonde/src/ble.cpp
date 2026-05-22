@@ -48,9 +48,11 @@ class ScanCB : public NimBLEScanCallbacks {
     if (idx < 0) {
       for (int i = 0; i < MAX_SOURCES; i++) if (!sources[i].valid) { idx = i; break; }
       if (idx < 0) return;
-      sources[idx].valid       = true;
-      sources[idx].rssi_smooth = (float)rssi;
-      sources[idx].rssi_peak   = (float)rssi;
+      sources[idx].valid          = true;
+      sources[idx].rssi_buf_idx   = 0;
+      sources[idx].rssi_buf_count = 0;
+      sources[idx].rssi_smooth    = (float)rssi;
+      sources[idx].rssi_peak      = (float)rssi;
       strncpy(sources[idx].name, n.c_str(), 19);
       sources[idx].name[19] = 0;
     }
@@ -61,7 +63,15 @@ class ScanCB : public NimBLEScanCallbacks {
     s.max_dosis_100  = max_dosis_100;
     s.tx_power       = tx_power;
     s.last_seen      = millis();
-    s.rssi_smooth    = s.rssi_smooth*(1.0f-RSSI_SMOOTH) + (float)rssi*RSSI_SMOOTH;
+
+    // Moving-Average ueber die letzten RSSI_AVG_WINDOW Samples
+    s.rssi_buf[s.rssi_buf_idx] = (float)rssi;
+    s.rssi_buf_idx = (s.rssi_buf_idx + 1) % RSSI_AVG_WINDOW;
+    if (s.rssi_buf_count < RSSI_AVG_WINDOW) s.rssi_buf_count++;
+    float sum = 0.0f;
+    for (uint8_t i = 0; i < s.rssi_buf_count; i++) sum += s.rssi_buf[i];
+    s.rssi_smooth = sum / s.rssi_buf_count;
+
     if (s.rssi_smooth > s.rssi_peak) s.rssi_peak = s.rssi_smooth;
   }
 };

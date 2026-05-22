@@ -12,8 +12,13 @@ struct Source {
   uint8_t  nuklid;
   uint16_t max_dosis_100;   // 0.01 uSv/h Einheiten
   int8_t   tx_power;
-  float    rssi_smooth;
-  float    rssi_peak;
+  // Moving-Average Ringbuffer ueber die letzten RSSI_AVG_WINDOW Samples.
+  // rssi_smooth ist der arithmetische Mittelwert ueber rssi_buf_count Werte.
+  float    rssi_buf[RSSI_AVG_WINDOW];
+  uint8_t  rssi_buf_idx;
+  uint8_t  rssi_buf_count;
+  float    rssi_smooth;     // berechneter Mittelwert
+  float    rssi_peak;       // bester je gesehener Mittelwert
   uint32_t last_seen;
   char     name[20];
 };

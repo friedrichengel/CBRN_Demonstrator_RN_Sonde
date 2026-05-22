@@ -30,7 +30,9 @@
 // ---- BLE / Sources ----
 #define MAX_SOURCES         16
 #define SOURCE_TIMEOUT_MS   5000
-#define RSSI_SMOOTH         0.3f
+// Gleitender Mittelwert ueber die letzten N RSSI-Samples (-> rssi_smooth).
+// 5 = sanfte Anzeige, 3 = schnellere Reaktion, 10 = sehr ruhig aber traege.
+#define RSSI_AVG_WINDOW     5
 
 // ---- Buttons ----
 #define BTN_DEBOUNCE_MS     30

@@ -293,18 +293,41 @@ void drawScreenSources() {
 
 // ====================== SCREEN: OWNER ============================
 void drawScreenOwner() {
-  gfx->setTextSize(2);
+  // Titel + Subtitel (Header)
+  gfx->setTextSize(3);
   gfx->setTextColor(COL_CYAN);
   gfx->setCursor(15, 28);
-  gfx->print("Besitzer");
+  gfx->print(OWNER.title);
 
-  for (int i = 0; i < OWNER_LINE_COUNT; i++) {
-    gfx->setTextSize(2);
-    gfx->setTextColor(COL_WHITE);
-    gfx->setCursor(25, 70 + i * 30);
-    gfx->print(OWNER_LINES[i]);
-  }
+  gfx->setTextSize(2);
+  gfx->setTextColor(COL_WHITE);
+  gfx->setCursor(15, 62);
+  gfx->print(OWNER.subtitle);
 
+  // Trennlinie
+  gfx->drawLine(15, 88, 521, 88, COL_DGRAY);
+
+  // Adressblock
+  gfx->setTextSize(2);
+  gfx->setTextColor(COL_LGRAY);
+  gfx->setCursor(15, 100);
+  gfx->print(OWNER.addr_line1);
+  gfx->setCursor(15, 124);
+  gfx->print(OWNER.addr_line2);
+
+  // Telefon / Fax (zweispaltig auf einer Hoehe)
+  gfx->setCursor(15, 156);
+  gfx->print(OWNER.phone);
+  gfx->setCursor(280, 156);
+  gfx->print(OWNER.fax);
+
+  // Email (kleiner damit lange Adressen passen)
+  gfx->setTextSize(1);
+  gfx->setTextColor(COL_CYAN);
+  gfx->setCursor(15, 188);
+  gfx->print(OWNER.email);
+
+  // Footer
   gfx->setTextSize(1);
   gfx->setTextColor(COL_DGRAY);
   gfx->setCursor(15, 222);

@@ -1,10 +1,11 @@
 #include "owner.h"
 
-// Platzhalter - spaeter aus persistenter Config laden
-const char* OWNER_LINES[] = {
-  "Max Mustermann",
-  "Behoerde / Abteilung",
-  "Inventar-Nr.: 0000",
-  "Kontakt: 0000/0000000"
+const OwnerInfo OWNER = {
+  "THW OV Berlin",
+  "Friedrichshain-Kreuzberg",
+  "General-Pape-Strasse 30",
+  "12101 Berlin",
+  "Tel: +49 30 6650899-0",
+  "Fax: +49 30 6650899-18",
+  "ov-berlin-friedrichshain-kreuzberg@thw.de"
 };
-const int OWNER_LINE_COUNT = sizeof(OWNER_LINES) / sizeof(OWNER_LINES[0]);

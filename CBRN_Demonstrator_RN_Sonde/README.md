@@ -124,7 +124,7 @@ src/
   display.cpp  Gauge, Top-Bar, alle Screens
   power.cpp    ESP-Deep-Sleep
   input.cpp    Screen-abh. Tasten-Routing
-  owner.cpp    OWNER_LINES Inhalt
+  owner.cpp    OwnerInfo-Struct mit Kontakt-/Besitzer-Daten
 ```
 
 Versionsangabe wird zentral in `include/config.h` ueber
@@ -159,7 +159,7 @@ Build-Flags (in `platformio.ini`):
   via `enableExtendedScan() + setExtScanPhy()`. Siehe `src/ble.cpp`
   → `startScan()`.
 
-- **Persistente Owner-Info:** `OWNER_LINES[]` in `src/owner.cpp` ist
+- **Persistente Owner-Info:** `OWNER` struct in `src/owner.cpp` ist
   derzeit hartkodiert. Spaeter z.B. ueber NVS-Storage befuellbar machen.
 
 - **Akku-Kalibrierung:** Die Lade-Erkennung basiert auf einer
