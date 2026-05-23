@@ -39,6 +39,7 @@ Hardware: **LilyGO T-Display-S3 AMOLED** (ESP32-S3 R8, 1.91" RM67162 QSPI, 536x2
 | Audio out       | 14       | -> PAM8403 IN+ (ggf. RC-Filter 1 kΩ / 100 nF)   |
 | Lautsprecher    | -        | 8 Ω / 1 W direkt an PAM8403 OUT                  |
 | Batterie        | 4        | onboard `BAT_VOLT`, Spannungsteiler 1:2          |
+| VBUS-Detect     | 16       | optional, siehe "Loetmod: VBUS auf GPIO" unten   |
 
 ---
 
@@ -109,6 +110,74 @@ Gauge entspricht "so nah, wie ich diese Quelle je gesehen habe".
 
 ---
 
+## Loetmod: VBUS auf GPIO (Lade-Erkennung)
+
+Der ESP32-S3 hat **keinen** internen VBUS-Sense-Pin, der nach aussen
+gefuehrt waere, und der TP4056 auf der T-Display-S3 fuehrt seinen CHRG-Pin
+nicht zum MCU. Die Firmware nutzt deshalb in der Default-Konfiguration eine
+Software-Heuristik (Spannungsanstieg ueber ~30 s) — die ist aber traege und
+erkennt das Einstecken erst nach einer halben Minute.
+
+Mit einem kleinen Loetmod bekommt man sofortige, eindeutige USB-Erkennung:
+ein Spannungsteiler von **USB-VBUS (5 V) auf GPIO16** liefert beim Stecken
+~2.5 V (HIGH), beim Ziehen 0 V (LOW).
+
+### Schaltung
+
+```
+   USB-VBUS (5 V)
+        |
+        |
+       [R1]   10 kOhm
+        |
+        +-----------> GPIO16   (in der Firmware: PIN_VBUS_DET)
+        |
+       [R2]   10 kOhm
+        |
+       GND
+```
+
+R1 = R2 = 10 kOhm (1/8 W reicht; Toleranz 5 % unkritisch). Ergibt am
+GPIO 5 V × 10 / (10+10) = **2.5 V**, sicher ueber dem HIGH-Threshold des
+ESP32-S3 (~1.6 V) und unter VDD (3.3 V).
+
+Stromaufnahme der Schaltung dauerhaft: 5 V / 20 kOhm = 250 µA — vernachlaessigbar.
+
+### Anschlusspunkte auf dem Board
+
+| Signal     | Anzapfen an                                                 |
+|------------|-------------------------------------------------------------|
+| USB-VBUS   | Pin 1/4 (oder A1/A4 / B1/B4) der USB-C-Buchse, **oder** das `5V`-Testpad neben dem TP4056, **oder** der Eingang des 3.3-V-LDO |
+| GND        | beliebiges GND-Pad (am einfachsten der `GND`-Pin der Stiftleiste) |
+| GPIO16     | Pin `IO16` der Stiftleiste                                  |
+
+Praktisch: die beiden Widerstaende auf ein Stueck Lochraster oder direkt
+fliegend an die Stiftleiste loeten, jeweils mit Schrumpfschlauch ueber den
+Beinchen.
+
+### Aktivieren in der Firmware
+
+Bereits vorbereitet: in [include/config.h](include/config.h) ist
+`PIN_VBUS_DET = 16` gesetzt und der Pin wird mit `INPUT_PULLDOWN`
+initialisiert. Solange nichts angeloetet ist, liest GPIO16 stabil LOW —
+die Software-Heuristik laeuft als Fallback weiter und nichts ist
+schlimmer als vorher. Sobald die Bruecke verloetet ist, hat der Pin
+Vorrang und USB wird sofort beim Einstecken erkannt.
+
+Andere GPIO statt 16: in `config.h` `PIN_VBUS_DET` auf die gewuenschte
+Nummer setzen. `-1` deaktiviert den HW-Pfad komplett (nur SW-Heuristik).
+
+### Schnelltest nach dem Loeten
+
+1. Geraet im Akku-Betrieb starten — Top-Bar zeigt nur `xx%`, kein `USB`.
+2. USB-Kabel einstecken — innerhalb 1 s sollte `USB` (cyan) erscheinen.
+3. Ziehen — `USB`-Label verschwindet innerhalb 1 s wieder.
+
+Wenn das nicht klappt: GPIO16 mit Multimeter messen
+(unverloetet ~0 V, mit Mod und USB ~2.5 V, mit Mod ohne USB ~0 V).
+
+---
+
 ## Code-Struktur
 
 ```
@@ -168,8 +237,6 @@ Build-Flags (in `platformio.ini`):
 - **Persistente Owner-Info:** `OWNER` struct in `src/owner.cpp` ist
   derzeit hartkodiert. Spaeter z.B. ueber NVS-Storage befuellbar machen.
 
-- **Akku-Kalibrierung:** Die Lade-Erkennung nutzt primaer das BSesVld-
-  Bit im USB-OTG-Register (GOTGCTL) des ESP32-S3 — echte VBUS-Detection,
-  funktioniert auch fuer reine USB-Netzteile. Spannungsschwelle ≥ 4.18 V
-  bleibt als Fallback. Genauere Akku-Anzeige (Strom-Integration,
-  Coulomb-Counting) waere nur mit Zusatz-Hardware moeglich.
+- **Lade-Erkennung (USB):** SW-Heuristik laeuft als Default-Fallback,
+  GPIO16 ist als HW-VBUS-Pin vorbereitet (mit `INPUT_PULLDOWN`).
+  Anleitung zum Loetmod siehe Abschnitt "Loetmod: VBUS auf GPIO".

@@ -11,4 +11,5 @@ struct BatState {
 
 extern BatState bat;
 
+void initBattery();
 void updateBattery();

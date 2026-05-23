@@ -1,17 +1,29 @@
 // ================================================================
 // battery.cpp - ADC-Sampling + Lade-Erkennung
+//
+// VBUS/Lade-Detection laeuft mehrgleisig (OR-verknuepft):
+//   1) HW-Pin PIN_VBUS_DET (wenn >= 0)
+//      - INPUT_PULLDOWN; unverloetet -> immer LOW -> kein Einfluss
+//      - mit Loetmod (10k/10k Teiler von USB-VBUS) -> sofortiges HIGH
+//   2) SW-Heuristik:
+//      a) Spannungsanstieg > 5 mV ueber 30 s -> charging
+//      b) Spannungsabfall < -5 mV ueber 30 s -> nicht charging
+//      c) Hysterese sonst (Zustand bleibt)
+//   3) Absolute Schwelle: Spannung >= 4.18 V -> charging
+//      (CV-Phase / Erhaltungsladung)
 // ================================================================
 #include <Arduino.h>
 #include "battery.h"
 #include "config.h"
 
-extern "C" {
-  #include "soc/usb_reg.h"   // USB-OTG Register (GOTGCTL fuer VBUS-Detection)
-}
-
 BatState bat = { 3.7f, 50, false };
 
 static uint32_t batLastSampleMs = 0;
+
+// SW-Heuristik State
+static float    swVRef     = 0.0f;
+static uint32_t swVRefStamp = 0;
+static bool     swCharging  = false;
 
 static float readBatteryVoltage() {
   uint32_t sum = 0;
@@ -25,15 +37,11 @@ static int batteryPercent(float v) {
   return (int)((v - 3.30f) / 0.85f * 100.0f);
 }
 
-// ESP32-S3 USB-OTG: GOTGCTL Bit 19 (BSesVld) = VBUS valid.
-// Funktioniert auch fuer reine USB-Netzteile ohne Host-Enumeration.
-// Voraussetzung: USB-Peripheral getaktet -> durch ARDUINO_USB_CDC_ON_BOOT=1
-// (siehe platformio.ini) erfuellt.
-static bool readVbusPresent() {
-#if defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
-  return (REG_READ(USB_GOTGCTL_REG) & (1U << 19)) != 0;
-#else
-  return false;
+void initBattery() {
+#if PIN_VBUS_DET >= 0
+  // Pulldown -> unverloetet liest der Pin sicher LOW (kein Floating-Noise).
+  // Externer 10k/10k-Teiler ueberstimmt den ~50k internen Pulldown problemlos.
+  pinMode(PIN_VBUS_DET, INPUT_PULLDOWN);
 #endif
 }
 
@@ -46,8 +54,23 @@ void updateBattery() {
   bat.voltage  = bat.voltage * 0.7f + v * 0.3f;
   bat.percent  = batteryPercent(bat.voltage);
 
-  // 1) Hardware: USB-OTG VBUS-Bit -> zuverlaessig, sobald USB steckt
-  // 2) Fallback: Spannung >= 4.18 V (TP4056 CV-Phase, falls Register-Lesung
-  //    aus irgendeinem Grund nicht greift)
-  bat.charging = readVbusPresent() || (bat.voltage >= 4.18f);
+  // SW-Heuristik: Spannungsanstieg ueber 30s-Fenster
+  if (swVRefStamp == 0) {
+    swVRef      = bat.voltage;
+    swVRefStamp = now;
+  } else if (now - swVRefStamp >= 30000) {
+    float delta = bat.voltage - swVRef;
+    if      (delta >  0.005f) swCharging = true;   // klar steigend -> Laden
+    else if (delta < -0.005f) swCharging = false;  // klar fallend  -> Akku-Betrieb
+    // sonst: Zustand bleibt (Hysterese gegen ADC-Rauschen)
+    swVRef      = bat.voltage;
+    swVRefStamp = now;
+  }
+
+  // HW-Pin (wenn verdrahtet) + SW-Heuristik + absolute Schwelle, OR-verknuepft
+  bool hw_vbus = false;
+#if PIN_VBUS_DET >= 0
+  hw_vbus = digitalRead(PIN_VBUS_DET) == HIGH;
+#endif
+  bat.charging = hw_vbus || swCharging || (bat.voltage >= 4.18f);
 }

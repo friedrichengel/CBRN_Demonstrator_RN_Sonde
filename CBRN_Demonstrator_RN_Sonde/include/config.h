@@ -5,8 +5,8 @@
 
 // ---- Firmware-Version (X.YY) ----
 #define FIRMWARE_VERSION_MAJOR  2
-#define FIRMWARE_VERSION_MINOR  15
-#define FIRMWARE_VERSION_STR    "2.15"
+#define FIRMWARE_VERSION_MINOR  17
+#define FIRMWARE_VERSION_STR    "2.17"
 
 // ---- Debug ----
 #define DEBUG_MODE              false
@@ -26,6 +26,19 @@
 #define PIN_BTN_B      13    // extern, INPUT_PULLUP, active low
 #define PIN_AUDIO      14    // PAM8403 IN (LEDC PWM)
 #define PIN_BAT_VOLT   4     // ADC1_CH3, BAT_VOLT (Spannungsteiler 1:2)
+
+// ---- USB-VBUS-Detection (Lade-Erkennung) ----
+//   Der ESP32-S3 internal-PHY liefert kein zuverlaessiges VBUS-Signal,
+//   und der TP4056-CHRG-Pin geht auf der T-Display-S3 nicht zum ESP.
+//   Strategie:
+//     - Wenn Pin definiert (>= 0): Pin wird mit INPUT_PULLDOWN initialisiert
+//       und zusaetzlich zur Software-Heuristik OR-verknuepft.
+//       Unverloetet: Pin ist LOW -> nur SW-Heuristik aktiv.
+//       Nach Loetmod: Pin liefert sofortiges, eindeutiges Signal.
+//     - Wenn -1: nur Software-Heuristik (Spannungsanstieg ueber ~30 s).
+//   Hardware-Mod (siehe README.md, Abschnitt "Loetmod: VBUS auf GPIO"):
+//     USB-VBUS (5 V) -> 10 kOhm -> GPIO16 -> 10 kOhm -> GND
+#define PIN_VBUS_DET   16
 
 // ---- BLE / Sources ----
 #define MAX_SOURCES         16

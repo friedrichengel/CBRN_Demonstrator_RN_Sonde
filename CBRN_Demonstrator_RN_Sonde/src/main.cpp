@@ -41,6 +41,7 @@ void setup() {
   initButtons();
   initDisplay();
   initAudio();
+  initBattery();
   updateBattery();
   initBle();
 
