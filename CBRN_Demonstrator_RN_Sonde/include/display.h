@@ -14,7 +14,7 @@ void initDisplay();
 void drawTopBar();
 void drawVersion();              // X.YY in der Ecke unten rechts
 
-void drawScreenGauge(float dose_usvh, int active_count, const Source* best);
+void drawScreenGauge(float dose_usvh, int active_count, int calibrating_count, const Source* best);
 void drawScreenMenu();
 void drawScreenSources();
 void drawScreenOwner();

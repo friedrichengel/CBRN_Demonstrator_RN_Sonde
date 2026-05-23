@@ -10,7 +10,8 @@ struct Source {
   bool     valid;
   uint8_t  sender_nr;
   uint8_t  nuklid;
-  uint16_t max_dosis_100;   // 0.01 uSv/h Einheiten
+  float    max_dose_usvh;   // Vollausschlag der Quelle in uSv/h (aus Roh-Wert + Einheits-Index konvertiert)
+  uint8_t  unit_index;      // 0=nSv/h, 1=uSv/h, 2=mSv/h, 3=Sv/h (wie vom Sender gesendet)
   int8_t   tx_power;
   // Stufe 1: aktueller 1-Sek-Bin (kumuliert)
   float    bin_sum;

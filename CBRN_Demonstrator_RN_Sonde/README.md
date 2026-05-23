@@ -13,8 +13,13 @@ Hardware: **LilyGO T-Display-S3 AMOLED** (ESP32-S3 R8, 1.91" RM67162 QSPI, 536x2
 - BLE-Scan auf 1M-PHY (Normal) und Coded-PHY/LR (Umschaltbar im Menue)
 - Filter auf Geraete-Namen `Strahler-NNN`, anschliessend Manufacturer-Data CRC-Pruefung
 - Dosis-Berechnung aus Manufacturer-Data Werten + RSSI-Pfadverlust + Abstandsquadratgesetz
-- Auto-Range-Anzeige (nSv/uSv/mSv-Skala je nach `max_dosis` der gewaehlten Quelle)
+- Auto-Range-Anzeige (nSv/uSv/mSv/Sv-Skala je nach `max_dosis` der gewaehlten Quelle)
 - Beste Quelle = max(berechnete Dosis) ueber alle empfangenen Quellen
+  (auf gemeinsame Einheit uSv/h normalisiert, damit Sender mit unterschiedlichen
+  Einheits-Indizes vergleichbar sind)
+- Aufwaerm-/Kalibrierphase ~`RSSI_BIN_MS * RSSI_AVG_SECS` (3 s) nach Erstkontakt
+  bzw. Wiederfund einer Quelle; Anzeige zeigt waehrenddessen "Kalibrierung..."
+  statt eines noch nicht aussagekraeftigen Dosis-Wertes
 - Geiger-Klick-Audio (LEDC PWM, Klick-Rate proportional zur Dosis)
 - Akku-Anzeige mit %-Wert + USB-Lade-Erkennung
 - Menue mit: Reichweite-Toggle / Audio-Toggle / Quellen-Liste / Besitzer-Info / Aus-Modus
@@ -54,17 +59,22 @@ Inaktivitaets-Timeout im Menue: 20 s ohne Eingabe -> zurueck zur Gauge.
 
 **Geraetename:** `Strahler-NNN` (NNN = Sender-Nummer 000–250)
 
-**Manufacturer-Data** (im Advertising-Frame, kein GATT noetig):
+**Manufacturer-Data** (im Advertising-Frame, kein GATT noetig, Advertising-Intervall 100 ms):
 
 | Byte | Inhalt                                                          |
 |------|-----------------------------------------------------------------|
 | 0–1  | `0xFF 0xFF` Company-ID (custom/Test)                            |
-| 2    | `0x01` Protokoll-Version                                        |
+| 2    | `0x02` Protokoll-Version                                        |
 | 3    | Sender-Nr (1–254)                                               |
 | 4    | Nuklid-ID (1–8, siehe `nuklid_name[]` in `src/ble.cpp`)         |
-| 5–6  | max. Dosisleistung in 0,01 µSv/h, Big Endian                    |
-| 7    | TX-Power in dBm (int8) — derzeit +4                              |
-| 8    | XOR-CRC ueber Byte 2–7                                          |
+| 5–6  | max. Dosisleistung als Ganzzahl, Big Endian                     |
+| 7    | Einheits-Index: 0=nSv/h, 1=uSv/h, 2=mSv/h, 3=Sv/h               |
+| 8    | TX-Power in dBm (int8) — derzeit +4                              |
+| 9    | XOR-CRC ueber Byte 2–8                                          |
+
+Die Sonde normalisiert den max-Dosis-Wert beim Empfang mit dem Einheits-Index
+auf uSv/h, damit Quellen mit unterschiedlichen Einheiten direkt verglichen
+und in der gleichen Skala dargestellt werden koennen.
 
 **Reichweiten-Modus** (Strahler-seitig):
 - *Normal*: Legacy Advertising, 1 Mbps, ~30–50 m
@@ -83,13 +93,16 @@ I / I_max   = (1/d)^2 = 10^(Δ / (5·n)) (Abstandsquadratgesetz)
 ```
 
 Der **Pfadverlust-Exponent `n`** ist in `include/config.h` als
-`DOSE_PATH_LOSS_N` konfigurierbar:
+`DOSE_PATH_LOSS_N` konfigurierbar. Effektiv ergibt sich `5·n` dB RSSI-Drop
+pro Dekade Dosis-Abfall — physikalische Werte (n=2..4) sind im
+Trainings-Setting zu aggressiv, daher hoeher gewaehlt:
 
-| n   | Umgebung                                | Anzeigeverlauf                 |
-|-----|------------------------------------------|--------------------------------|
-| 2.0 | Free Space (theoretisch)                | sehr schneller Abfall          |
-| 3.0 | outdoor mit Bodenreflexion              | klassisches 1/d² Verhalten     |
-| 4.0 | indoor mit Waenden / Multipath (Default)| traeger, fuer Trainings gut    |
+| n    | Anzeigeverlauf bei ~−20 dB RSSI-Drop (≈ 1 m)         |
+|------|------------------------------------------------------|
+| 2.0  | Free Space — sehr schneller Abfall (~1%)             |
+| 4.0  | Indoor physikalisch — immer noch zu schnell (~9%)    |
+| 8.0  | sanft (~30%)                                         |
+| 12.0 | sehr sanft (~45%, Trainings-Default)                 |
 
 `rssi_peak` ist der bisher hoechste RSSI dieser Quelle — `100 %`-Stellung der
 Gauge entspricht "so nah, wie ich diese Quelle je gesehen habe".
@@ -155,8 +168,8 @@ Build-Flags (in `platformio.ini`):
 - **Persistente Owner-Info:** `OWNER` struct in `src/owner.cpp` ist
   derzeit hartkodiert. Spaeter z.B. ueber NVS-Storage befuellbar machen.
 
-- **Akku-Kalibrierung:** Die Lade-Erkennung basiert auf einer
-  Spannungsschwelle (≥ 4.15 V = USB), weil der TP4056-CHRG-Pin am
-  Board nicht zum ESP gefuehrt ist. Genauer wuerde ein dedizierter
-  GPIO mit Pullup gegen CHRG funktionieren — falls Hardware angepasst
-  werden kann.
+- **Akku-Kalibrierung:** Die Lade-Erkennung nutzt primaer das BSesVld-
+  Bit im USB-OTG-Register (GOTGCTL) des ESP32-S3 — echte VBUS-Detection,
+  funktioniert auch fuer reine USB-Netzteile. Spannungsschwelle ≥ 4.18 V
+  bleibt als Fallback. Genauere Akku-Anzeige (Strom-Integration,
+  Coulomb-Counting) waere nur mit Zusatz-Hardware moeglich.

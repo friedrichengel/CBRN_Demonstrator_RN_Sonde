@@ -5,8 +5,8 @@
 
 // ---- Firmware-Version (X.YY) ----
 #define FIRMWARE_VERSION_MAJOR  2
-#define FIRMWARE_VERSION_MINOR  10
-#define FIRMWARE_VERSION_STR    "2.10"
+#define FIRMWARE_VERSION_MINOR  15
+#define FIRMWARE_VERSION_STR    "2.15"
 
 // ---- Debug ----
 #define DEBUG_MODE              false
@@ -58,5 +58,8 @@
 // ---- Dose-Modell (Pfadverlust + Abstandsquadratgesetz) ----
 //   d/d_peak = 10^(-deltaRSSI / (10*n))    Pfadverlust
 //   I/I_max  = (1/d)^2 = 10^(deltaRSSI / (5*n))  Abstandsquadratgesetz
-// n: 2.0 = Free Space | 3.0 = outdoor | 4.0 = indoor mit Daempfung
-#define DOSE_PATH_LOSS_N    4.0f
+// Effektiver Falloff = 5*n dB pro Dekade Intensitaet:
+//   n=2..4   physikalisch (Free Space ... Indoor) - im Training zu aggressiv
+//   n=8      sanft, 1 m ~30%
+//   n=12     sehr sanft, 1 m ~45% (Training-Default)
+#define DOSE_PATH_LOSS_N    12.0f

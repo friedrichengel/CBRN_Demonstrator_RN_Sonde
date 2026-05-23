@@ -12,8 +12,11 @@ float calcDose(const Source &s) {
   if (delta_db > 0.0f) delta_db = 0.0f;
   // Pfadverlust -> Distanz -> Abstandsquadratgesetz
   // I = I_max * 10^(delta / (5*n))
-  float max_dose = s.max_dosis_100 / 100.0f;
-  return max_dose * powf(10.0f, delta_db / (5.0f * DOSE_PATH_LOSS_N));
+  return s.max_dose_usvh * powf(10.0f, delta_db / (5.0f * DOSE_PATH_LOSS_N));
+}
+
+bool isCalibrating(const Source& s) {
+  return s.sec_buf_count < RSSI_AVG_SECS;
 }
 
 uint16_t colorForFrac(float frac) {
@@ -24,7 +27,7 @@ uint16_t colorForFrac(float frac) {
 }
 
 // Skala wird durch max_dose_usvh (= Vollausschlag der Quelle) bestimmt.
-// Einheit (nSv/uSv/mSv) wird so gewaehlt, dass der Vollausschlag lesbar ist.
+// Einheit (nSv/uSv/mSv/Sv) wird so gewaehlt, dass der Vollausschlag lesbar ist.
 RangeResult autoRange(float dose_usvh, float max_dose_usvh) {
   if (max_dose_usvh <= 0.0f) max_dose_usvh = 1.0f;
   float frac = dose_usvh / max_dose_usvh;
@@ -34,7 +37,9 @@ RangeResult autoRange(float dose_usvh, float max_dose_usvh) {
     return {dose_usvh * 1000.0f, max_dose_usvh * 1000.0f, "nSv/h", c};
   } else if (max_dose_usvh < 1000.0f) {
     return {dose_usvh, max_dose_usvh, "uSv/h", c};
-  } else {
+  } else if (max_dose_usvh < 1.0e6f) {
     return {dose_usvh / 1000.0f, max_dose_usvh / 1000.0f, "mSv/h", c};
+  } else {
+    return {dose_usvh / 1.0e6f, max_dose_usvh / 1.0e6f, "Sv/h", c};
   }
 }

@@ -66,14 +66,18 @@ void loop() {
     }
   }
 
-  // Beste Quelle = max(current_dose) ueber alle live Quellen
+  // Beste Quelle = max(current_dose) ueber alle live, kalibrierte Quellen.
+  // Quellen in der Aufwaerm-/Kalibrierphase (Ringbuffer noch nicht voll) sind
+  // detektiert aber liefern noch keinen sinnvollen Dosis-Wert.
   const Source* best = nullptr;
-  float best_dose = -1.0f;
-  int   active    = 0;
+  float best_dose   = -1.0f;
+  int   active      = 0;
+  int   calibrating = 0;
   for (int i = 0; i < MAX_SOURCES; i++) {
     if (!sources[i].valid) continue;
     if ((now - sources[i].last_seen) > SOURCE_TIMEOUT_MS) continue;
     active++;
+    if (isCalibrating(sources[i])) { calibrating++; continue; }
     float d = calcDose(sources[i]);
     if (d > best_dose) {
       best_dose = d;
@@ -90,7 +94,7 @@ void loop() {
     lastDisplay = now;
     gfx->fillScreen(COL_BG);
     switch (currentScreen) {
-      case SCR_GAUGE:   drawScreenGauge(dose, active, best); break;
+      case SCR_GAUGE:   drawScreenGauge(dose, active, calibrating, best); break;
       case SCR_MENU:    drawScreenMenu();                    break;
       case SCR_OWNER:   drawScreenOwner();                   break;
       case SCR_SOURCES: drawScreenSources();                 break;

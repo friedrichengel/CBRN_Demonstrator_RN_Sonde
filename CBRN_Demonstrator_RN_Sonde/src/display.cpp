@@ -129,8 +129,9 @@ void drawVersion() {
 }
 
 // ====================== SCREEN: GAUGE ============================
-void drawScreenGauge(float dose_usvh, int active_count, const Source* best) {
-  float max_d = (best != nullptr) ? best->max_dosis_100 / 100.0f : 1.0f;
+void drawScreenGauge(float dose_usvh, int active_count, int calibrating_count,
+                     const Source* best) {
+  float max_d = (best != nullptr) ? best->max_dose_usvh : 1.0f;
   RangeResult rr = autoRange(dose_usvh, max_d);
   float fraction = constrain(rr.display_val / rr.gauge_max, 0.0f, 1.0f);
 
@@ -139,12 +140,18 @@ void drawScreenGauge(float dose_usvh, int active_count, const Source* best) {
   gfx->fillCircle(GCX, GCY, 10, COL_WHITE);
   gfx->fillCircle(GCX, GCY,  5, COL_DGRAY);
 
+  // Linke Spalte: grosser Wert. Waehrend Kalibrierung "----" statt 0-Wert.
   gfx->setTextSize(4);
-  gfx->setTextColor(rr.color);
   gfx->setCursor(5, 28);
-  if      (rr.display_val < 10.0f)  gfx->printf("%.2f", rr.display_val);
-  else if (rr.display_val < 100.0f) gfx->printf("%.1f", rr.display_val);
-  else                               gfx->printf("%.0f", rr.display_val);
+  if (best == nullptr && calibrating_count > 0) {
+    gfx->setTextColor(COL_YELLOW);
+    gfx->print("----");
+  } else {
+    gfx->setTextColor(rr.color);
+    if      (rr.display_val < 10.0f)  gfx->printf("%.2f", rr.display_val);
+    else if (rr.display_val < 100.0f) gfx->printf("%.1f", rr.display_val);
+    else                               gfx->printf("%.0f", rr.display_val);
+  }
   gfx->setTextSize(2);
   gfx->setTextColor(COL_WHITE);
   gfx->setCursor(5, 78);
@@ -165,6 +172,10 @@ void drawScreenGauge(float dose_usvh, int active_count, const Source* best) {
     gfx->print(nuklid_name[best->nuklid]);
     gfx->setCursor(380, 84);
     gfx->printf("RSSI %.0fdBm", best->rssi_smooth);
+  } else if (calibrating_count > 0) {
+    gfx->setCursor(380, 55);
+    gfx->setTextColor(COL_YELLOW);
+    gfx->print("Kalibrierung...");
   } else {
     gfx->setCursor(380, 55);
     gfx->setTextColor(COL_DGRAY);
@@ -261,9 +272,7 @@ void drawScreenSources() {
   gfx->printf("Nuklid: %s   Sender-Nr: %03d   TX: %+d dBm",
               nuklid_name[s.nuklid], s.sender_nr, s.tx_power);
 
-  float cur  = calcDose(s);
-  float maxd = s.max_dosis_100 / 100.0f;
-  RangeResult rrCur = autoRange(cur,  maxd);
+  float maxd = s.max_dose_usvh;
   RangeResult rrMax = autoRange(maxd, maxd);
 
   auto printDose = [&](int y, const char* lbl, const RangeResult& r, uint16_t col) {
@@ -274,7 +283,17 @@ void drawScreenSources() {
     else if (r.display_val < 100.0f)  gfx->printf("%s %.1f %s", lbl, r.display_val, r.unit);
     else                               gfx->printf("%s %.0f %s", lbl, r.display_val, r.unit);
   };
-  printDose(120, "Aktuell:", rrCur, rrCur.color);
+
+  if (isCalibrating(s)) {
+    gfx->setTextSize(2);
+    gfx->setTextColor(COL_YELLOW);
+    gfx->setCursor(15, 120);
+    gfx->print("Aktuell: Kalibrierung...");
+  } else {
+    float cur = calcDose(s);
+    RangeResult rrCur = autoRange(cur, maxd);
+    printDose(120, "Aktuell:", rrCur, rrCur.color);
+  }
   printDose(148, "Max:    ", rrMax, COL_LGRAY);
 
   gfx->setTextSize(1);
