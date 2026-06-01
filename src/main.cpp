@@ -31,6 +31,7 @@
 #include "display.h"
 #include "power.h"
 #include "input.h"
+#include "webportal.h"
 
 void setup() {
   Serial.begin(115200);
@@ -55,6 +56,22 @@ void loop() {
   if (offRequested) { enterDeepSleep(); return; }
 
   updateBattery();
+
+  // WLAN-/Update-Modus: BLE ist gestoppt, daher kein Quellen-Handling.
+  // Stattdessen Webserver/DNS bedienen und den WLAN-Screen zeichnen.
+  if (currentScreen == SCR_WIFI) {
+    handleWifiPortal();
+    static uint32_t lastDisplayW = 0;
+    if (now - lastDisplayW >= DISPLAY_FPS_MS) {
+      lastDisplayW = now;
+      gfx->fillScreen(COL_BG);
+      drawScreenWifi();
+      drawVersion();
+      gfx->flush();
+    }
+    delay(5);
+    return;
+  }
 
   // Timeout-Cleanup
   static uint32_t lastCleanup = 0;

@@ -8,6 +8,8 @@
 #include "config.h"
 #include "ble.h"
 #include "audio.h"
+#include "webportal.h"
+#include "display.h"
 
 static void handleMenuSelect() {
   menuLastInputMs = millis();
@@ -17,7 +19,9 @@ static void handleMenuSelect() {
     case 1: audioEnabled = !audioEnabled;                                       break;
     case 2: currentScreen = SCR_SOURCES; sourceBrowseIdx = 0;                   break;
     case 3: currentScreen = SCR_OWNER;                                          break;
-    case 4: offRequested = true;                                                break;
+    case 4: initWifiPortal(); currentScreen = SCR_WIFI;                         break;
+    case 5: setDisplayFlipped(!displayFlipped);                                 break;
+    case 6: offRequested = true;                                                break;
   }
 }
 
@@ -48,5 +52,10 @@ void handleButtons() {
     else if (eHW == BTN_SHORT) { currentScreen = SCR_MENU; }
     else if (eA  == BTN_SHORT) { sourceBrowseIdx++; }
     else if (eB  == BTN_SHORT) { sourceBrowseIdx--; }
+  }
+  else if (currentScreen == SCR_WIFI) {
+    // WLAN-Modus nur per langem HW-Druck verlassen (kurze Drucke ignorieren,
+    // damit man nicht versehentlich ein laufendes Update abbricht).
+    if (eHW == BTN_LONG) { stopWifiPortal(); currentScreen = SCR_MENU; }
   }
 }

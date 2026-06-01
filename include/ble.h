@@ -32,4 +32,5 @@ extern Source sources[MAX_SOURCES];
 extern const char* nuklid_name[9];
 
 void initBle();
+void stopBle();   // NimBLE deinitialisieren (gibt Radio/Heap fuer WLAN frei)
 void switchBleMode(BleMode newMode);

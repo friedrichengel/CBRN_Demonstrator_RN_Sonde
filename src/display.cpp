@@ -3,6 +3,7 @@
 // ================================================================
 #include <Arduino.h>
 #include <math.h>
+#include <Preferences.h>
 #include "display.h"
 #include "config.h"
 #include "state.h"
@@ -10,6 +11,7 @@
 #include "dose.h"
 #include "battery.h"
 #include "owner.h"
+#include "webportal.h"
 
 // ---- Hardware-Treiber + Canvas (in PSRAM) ----
 static Arduino_DataBus *bus = new Arduino_ESP32QSPI(
@@ -198,16 +200,21 @@ void drawScreenMenu() {
            currentBleMode == BLE_LR ? "Lang (LR)" : "Normal");
   snprintf(buf1, sizeof(buf1), "Audio:      %s",
            audioEnabled ? "AN" : "AUS");
+  char buf5[40];
+  snprintf(buf5, sizeof(buf5), "Display:    %s",
+           displayFlipped ? "180 Grad" : "Normal");
   rows[0] = buf0;
   rows[1] = buf1;
   rows[2] = "Quellen-Liste";
   rows[3] = "Besitzer-Info";
-  rows[4] = "Aus-Modus";
+  rows[4] = "WLAN / Update";
+  rows[5] = buf5;
+  rows[6] = "Aus-Modus";
 
   for (int i = 0; i < MENU_ITEMS; i++) {
-    int y = 60 + i * 30;
+    int y = 52 + i * 26;
     if (i == menuIndex) {
-      gfx->fillRect(10, y - 5, 516, 26, COL_SEL);
+      gfx->fillRect(10, y - 5, 516, 24, COL_SEL);
       gfx->setTextColor(COL_WHITE);
     } else {
       gfx->setTextColor(COL_LGRAY);
@@ -355,9 +362,91 @@ void drawScreenOwner() {
   drawTopBar();
 }
 
+// ====================== SCREEN: WIFI / OTA =======================
+void drawScreenWifi() {
+  const WifiStatus& w = wifiStatus();
+
+  gfx->setTextSize(2);
+  gfx->setTextColor(COL_CYAN);
+  gfx->setCursor(15, 28);
+  gfx->print("WLAN / Firmware-Update");
+
+  // Accesspoint-Zugangsdaten
+  gfx->setTextSize(2);
+  gfx->setTextColor(COL_WHITE);
+  gfx->setCursor(15, 62);
+  gfx->printf("AP: %s", w.ap_ssid);
+  gfx->setTextColor(COL_LGRAY);
+  gfx->setCursor(15, 86);
+  gfx->printf("Passwort: %s", WIFI_AP_PASS);
+  gfx->setCursor(15, 110);
+  gfx->setTextColor(COL_CYAN);
+  gfx->printf("Browser: http://%s", w.ap_ip);
+
+  // Heimnetz-Status (falls verbunden)
+  gfx->setTextSize(1);
+  gfx->setCursor(15, 138);
+  if (w.sta_connected) {
+    gfx->setTextColor(COL_GREEN);
+    gfx->printf("Im Netz '%s': %s", w.sta_ssid, w.sta_ip);
+  } else if (w.sta_active) {
+    gfx->setTextColor(COL_YELLOW);
+    gfx->printf("Verbinde mit '%s'...", w.sta_ssid);
+  } else {
+    gfx->setTextColor(COL_DGRAY);
+    gfx->printf("Verbundene Clients: %d", w.clients);
+  }
+
+  // OTA-Status
+  gfx->setTextSize(2);
+  gfx->setCursor(15, 160);
+  switch (w.ota) {
+    case OTA_RUNNING: gfx->setTextColor(COL_YELLOW); break;
+    case OTA_SUCCESS: gfx->setTextColor(COL_GREEN);  break;
+    case OTA_ERROR:   gfx->setTextColor(COL_RED);    break;
+    default:          gfx->setTextColor(COL_LGRAY);  break;
+  }
+  gfx->printf("Update: %s", w.ota_msg);
+
+  if (w.ota == OTA_RUNNING) {
+    gfx->setTextSize(1);
+    gfx->setTextColor(COL_YELLOW);
+    gfx->setCursor(15, 188);
+    gfx->print("Laeuft - bitte nicht ausschalten!");
+  }
+
+  gfx->setTextSize(1);
+  gfx->setTextColor(COL_DGRAY);
+  gfx->setCursor(15, 222);
+  gfx->print("HW lang: WLAN beenden & zurueck");
+
+  drawTopBar();
+}
+
+// ====================== ROTATION =================================
+//   Querformat bleibt erhalten; nur Spiegelung um 180 Grad.
+//   Rotation 1 = normal (MX|MV), Rotation 3 = 180 Grad (MV|MY) - beide 536x240.
+void setDisplayFlipped(bool flipped) {
+  displayFlipped = flipped;
+  output->setRotation(flipped ? 3 : 1);
+  Preferences p;
+  p.begin("ui", false);
+  p.putBool("flip", flipped);
+  p.end();
+  Serial.printf("[DSP] Ausrichtung: %s\n", flipped ? "180 Grad" : "normal");
+}
+
 // ====================== INIT =====================================
 void initDisplay() {
   gfx->begin();
+
+  // Gespeicherte Ausrichtung laden und anwenden (vor dem Splash zeichnen)
+  Preferences p;
+  p.begin("ui", true);
+  displayFlipped = p.getBool("flip", false);
+  p.end();
+  output->setRotation(displayFlipped ? 3 : 1);
+
   gfx->fillScreen(COL_BG);
   gfx->setTextColor(COL_WHITE);
   gfx->setTextSize(3);

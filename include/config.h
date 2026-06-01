@@ -5,8 +5,8 @@
 
 // ---- Firmware-Version (X.YY) ----
 #define FIRMWARE_VERSION_MAJOR  2
-#define FIRMWARE_VERSION_MINOR  17
-#define FIRMWARE_VERSION_STR    "2.17"
+#define FIRMWARE_VERSION_MINOR  19
+#define FIRMWARE_VERSION_STR    "2.19"
 
 // ---- Debug ----
 #define DEBUG_MODE              false
@@ -61,7 +61,17 @@
 #define MENU_TIMEOUT_MS     20000
 
 // ---- UI ----
-#define MENU_ITEMS          5
+#define MENU_ITEMS          7
+
+// ---- WLAN / OTA-Update-Portal ----
+//   Im Menue aktivierbar: Geraet stoppt BLE, oeffnet einen WPA2-gesicherten
+//   Accesspoint mit Webseite (http://192.168.4.1). Dort kann man entweder
+//   direkt die Firmware (.bin) hochladen oder ein vorhandenes WLAN beitreten.
+#define WIFI_AP_SSID        "CBRN-Sonde-Setup"
+#define WIFI_AP_PASS        "sonde-update"   // WPA2, min. 8 Zeichen!
+#define WIFI_AP_CHANNEL     1
+#define WIFI_PORTAL_PORT    80
+#define WIFI_STA_TIMEOUT_MS 15000            // max. Wartezeit fuer Heimnetz-Verbindung
 
 // ---- Audio (LEDC PWM auf PAM8403) ----
 #define AUDIO_LEDC_FREQ     4000

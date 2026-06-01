@@ -10,6 +10,7 @@ extern Arduino_GFX*    output;     // Hardware-Treiber (RM67162)
 extern Arduino_Canvas* gfx;        // Off-Screen-Canvas (PSRAM)
 
 void initDisplay();
+void setDisplayFlipped(bool flipped);   // Querformat 180 Grad spiegeln (+NVS-Speicherung)
 
 void drawTopBar();
 void drawVersion();              // X.YY in der Ecke unten rechts
@@ -18,3 +19,4 @@ void drawScreenGauge(float dose_usvh, int active_count, int calibrating_count, c
 void drawScreenMenu();
 void drawScreenSources();
 void drawScreenOwner();
+void drawScreenWifi();

@@ -160,6 +160,13 @@ void initBle() {
   Serial.println("[BLE] NimBLE scan running");
 }
 
+void stopBle() {
+  if (bleScan) bleScan->stop();
+  NimBLEDevice::deinit(true);   // Controller + Host abschalten, Heap freigeben
+  bleScan = nullptr;
+  Serial.println("[BLE] gestoppt (Radio fuer WLAN freigegeben)");
+}
+
 void switchBleMode(BleMode newMode) {
   if (newMode == currentBleMode) return;
   currentBleMode = newMode;
