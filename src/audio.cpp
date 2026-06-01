@@ -2,6 +2,7 @@
 // audio.cpp - LEDC-PWM Klick-Generator mit Poisson-light Jitter
 // ================================================================
 #include <Arduino.h>
+#include <Preferences.h>
 #include "audio.h"
 #include "config.h"
 #include "state.h"
@@ -9,6 +10,21 @@
 void initAudio() {
   ledcAttach(PIN_AUDIO, AUDIO_LEDC_FREQ, AUDIO_LEDC_RES);
   ledcWrite(PIN_AUDIO, 0);
+
+  // Gespeicherte Audio-Einstellung laden (gemeinsamer NVS-Namespace "ui")
+  Preferences p;
+  p.begin("ui", true);
+  audioEnabled = p.getBool("audio", true);
+  p.end();
+}
+
+void setAudioEnabled(bool on) {
+  audioEnabled = on;
+  Preferences p;
+  p.begin("ui", false);
+  p.putBool("audio", on);
+  p.end();
+  Serial.printf("[AUD] Audio: %s\n", on ? "AN" : "AUS");
 }
 
 void playClick() {

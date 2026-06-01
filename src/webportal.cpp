@@ -24,6 +24,9 @@
 #include "webportal.h"
 #include "config.h"
 #include "ble.h"
+#include "state.h"
+#include "audio.h"
+#include "display.h"
 
 static WebServer  server(WIFI_PORTAL_PORT);
 static DNSServer  dns;
@@ -47,6 +50,7 @@ static String htmlHead(const char* title) {
     "font-size:16px;border-radius:6px;border:1px solid #444;background:#222;color:#eee}"
     "button{background:#0bf;color:#000;font-weight:bold;border:0;cursor:pointer}"
     ".card{background:#1c1c1c;border-radius:8px;padding:14px;margin:12px 0}"
+    "label{display:block;font-size:13px;color:#aaa;margin-top:8px}"
     ".muted{color:#888;font-size:13px}.ok{color:#3c6}.err{color:#e55}"
     "</style></head><body><div class='w'>");
   return h;
@@ -77,6 +81,25 @@ static void handleRoot() {
     "<form method='POST' action='/update' enctype='multipart/form-data'>"
     "<input type='file' name='firmware' accept='.bin' required>"
     "<button type='submit'>Update hochladen</button></form></div>");
+
+  // Geraete-Einstellungen (identisch zum Menue auf dem Geraet)
+  p += F("<div class='card'><h2>Einstellungen</h2>"
+    "<p class='muted'>Werden sofort gespeichert. Der Reichweiten-Modus wird beim "
+    "Verlassen des WLAN-Portals aktiv.</p>"
+    "<form method='POST' action='/settings'>"
+    "<label>Reichweite</label><select name='ble'>");
+  p += currentBleMode == BLE_LR
+       ? F("<option value='0'>Normal</option><option value='1' selected>Lang (LR)</option>")
+       : F("<option value='0' selected>Normal</option><option value='1'>Lang (LR)</option>");
+  p += F("</select><label>Audio</label><select name='audio'>");
+  p += audioEnabled
+       ? F("<option value='1' selected>An</option><option value='0'>Aus</option>")
+       : F("<option value='1'>An</option><option value='0' selected>Aus</option>");
+  p += F("</select><label>Display-Ausrichtung</label><select name='flip'>");
+  p += displayFlipped
+       ? F("<option value='0'>Normal</option><option value='1' selected>180 Grad</option>")
+       : F("<option value='0' selected>Normal</option><option value='1'>180 Grad</option>");
+  p += F("</select><button type='submit'>Einstellungen speichern</button></form></div>");
 
   // WLAN beitreten
   p += F("<div class='card'><h2>Mit WLAN verbinden (optional)</h2>"
@@ -199,6 +222,24 @@ static void handleWifiSave() {
   connectSta(ssid, pass);
 }
 
+// ---- Geraete-Einstellungen speichern (wie im Menue, persistiert in NVS) ----
+static void handleSettingsSave() {
+  if (server.hasArg("ble"))
+    setBleModeStored(server.arg("ble").toInt() == 1 ? BLE_LR : BLE_NORMAL);
+  if (server.hasArg("audio"))
+    setAudioEnabled(server.arg("audio").toInt() == 1);
+  if (server.hasArg("flip"))
+    setDisplayFlipped(server.arg("flip").toInt() == 1);
+
+  String p = htmlHead("Gespeichert");
+  p += F("<div class='card'><h2 class='ok'>Einstellungen gespeichert</h2>"
+    "<p class='muted'>Audio und Display-Ausrichtung sind sofort aktiv. Der "
+    "Reichweiten-Modus wird beim Verlassen des WLAN-Portals uebernommen.</p>"
+    "<p><a href='/' style='color:#0bf'>Zur Startseite</a></p></div>");
+  p += HTML_FOOT;
+  server.send(200, "text/html", p);
+}
+
 // ---- Captive-Portal: alles Unbekannte auf die Startseite ----
 static void handleNotFound() {
   server.sendHeader("Location", String("http://") + st.ap_ip, true);
@@ -249,6 +290,7 @@ void initWifiPortal() {
 
   // Webserver-Routen
   server.on("/", HTTP_GET, handleRoot);
+  server.on("/settings", HTTP_POST, handleSettingsSave);
   server.on("/wifi", HTTP_POST, handleWifiSave);
   server.on("/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);
   server.onNotFound(handleNotFound);

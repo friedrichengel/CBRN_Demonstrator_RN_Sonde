@@ -33,4 +33,5 @@ extern const char* nuklid_name[9];
 
 void initBle();
 void stopBle();   // NimBLE deinitialisieren (gibt Radio/Heap fuer WLAN frei)
-void switchBleMode(BleMode newMode);
+void switchBleMode(BleMode newMode);      // live umschalten (Scan-Neustart) + speichern
+void setBleModeStored(BleMode newMode);   // nur Wert+NVS setzen, kein Scan (fuer WLAN-Portal)

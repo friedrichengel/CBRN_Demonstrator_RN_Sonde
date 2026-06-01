@@ -5,8 +5,8 @@
 
 // ---- Firmware-Version (X.YY) ----
 #define FIRMWARE_VERSION_MAJOR  2
-#define FIRMWARE_VERSION_MINOR  19
-#define FIRMWARE_VERSION_STR    "2.19"
+#define FIRMWARE_VERSION_MINOR  20
+#define FIRMWARE_VERSION_STR    "2.20"
 
 // ---- Debug ----
 #define DEBUG_MODE              false

@@ -16,7 +16,7 @@ static void handleMenuSelect() {
   playClick();
   switch (menuIndex) {
     case 0: switchBleMode(currentBleMode == BLE_NORMAL ? BLE_LR : BLE_NORMAL); break;
-    case 1: audioEnabled = !audioEnabled;                                       break;
+    case 1: setAudioEnabled(!audioEnabled);                                     break;
     case 2: currentScreen = SCR_SOURCES; sourceBrowseIdx = 0;                   break;
     case 3: currentScreen = SCR_OWNER;                                          break;
     case 4: initWifiPortal(); currentScreen = SCR_WIFI;                         break;
@@ -33,7 +33,7 @@ void handleButtons() {
   if (currentScreen == SCR_GAUGE) {
     if      (eHW == BTN_SHORT) { currentScreen = SCR_MENU; menuIndex = 0; menuLastInputMs = millis(); }
     else if (eHW == BTN_LONG)  { offRequested = true; }
-    else if (eA  == BTN_SHORT) { audioEnabled = !audioEnabled; }
+    else if (eA  == BTN_SHORT) { setAudioEnabled(!audioEnabled); }
     else if (eB  == BTN_SHORT) { switchBleMode(currentBleMode == BLE_NORMAL ? BLE_LR : BLE_NORMAL); }
   }
   else if (currentScreen == SCR_MENU) {

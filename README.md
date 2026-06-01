@@ -22,7 +22,13 @@ Hardware: **LilyGO T-Display-S3 AMOLED** (ESP32-S3 R8, 1.91" RM67162 QSPI, 536x2
   statt eines noch nicht aussagekraeftigen Dosis-Wertes
 - Geiger-Klick-Audio (LEDC PWM, Klick-Rate proportional zur Dosis)
 - Akku-Anzeige mit %-Wert + USB-Lade-Erkennung
-- Menue mit: Reichweite-Toggle / Audio-Toggle / Quellen-Liste / Besitzer-Info / Aus-Modus
+- Menue mit: Reichweite-Toggle / Audio-Toggle / Quellen-Liste / Besitzer-Info /
+  WLAN-Update / Display-Ausrichtung / Aus-Modus
+- WLAN-/Update-Portal (WPA2-AP `CBRN-Sonde-Setup`, http://192.168.4.1): Firmware
+  per Browser hochladen (OTA) **und** alle Menue-Einstellungen (Reichweite, Audio,
+  Display-Ausrichtung) setzen — persistent in NVS
+- Einstellungen (Reichweite, Audio, Display-Ausrichtung) bleiben ueber Neustarts
+  erhalten (NVS-Namespace `ui`)
 - Deep Sleep ("Aus") mit Wake-Up auf HW-Taste
 - Version unten rechts auf jedem Screen
 

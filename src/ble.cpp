@@ -3,6 +3,7 @@
 // ================================================================
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+#include <Preferences.h>
 #include <string.h>
 #include "ble.h"
 #include "config.h"
@@ -152,8 +153,22 @@ static void startScan() {
   bleScan->start(0, false);
 }
 
+static void saveBleMode() {
+  Preferences p;
+  p.begin("ui", false);
+  p.putUChar("ble", (uint8_t)currentBleMode);
+  p.end();
+}
+
 void initBle() {
   memset(sources, 0, sizeof(sources));
+
+  // Gespeicherten Reichweiten-Modus laden (gemeinsamer NVS-Namespace "ui")
+  Preferences p;
+  p.begin("ui", true);
+  currentBleMode = (p.getUChar("ble", BLE_NORMAL) == BLE_LR) ? BLE_LR : BLE_NORMAL;
+  p.end();
+
   NimBLEDevice::init("Sonde");
   NimBLEDevice::setPower(ESP_PWR_LVL_P9);
   startScan();
@@ -170,7 +185,17 @@ void stopBle() {
 void switchBleMode(BleMode newMode) {
   if (newMode == currentBleMode) return;
   currentBleMode = newMode;
+  saveBleMode();
   startScan();
   Serial.printf("[BLE] Mode -> %s\n",
+                newMode == BLE_LR ? "LR/Coded" : "Normal/1M");
+}
+
+// Im WLAN-Portal ist BLE gestoppt - hier nur Wert + NVS setzen.
+// Beim Verlassen des Portals laedt initBle() den Wert und startet den Scan.
+void setBleModeStored(BleMode newMode) {
+  currentBleMode = newMode;
+  saveBleMode();
+  Serial.printf("[BLE] Mode gespeichert -> %s\n",
                 newMode == BLE_LR ? "LR/Coded" : "Normal/1M");
 }
