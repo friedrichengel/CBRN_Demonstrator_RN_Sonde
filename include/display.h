@@ -20,3 +20,4 @@ void drawScreenMenu();
 void drawScreenSources();
 void drawScreenOwner();
 void drawScreenWifi();
+void drawScreenPin();      // PIN-Eingabe zur Diagnose-Freischaltung

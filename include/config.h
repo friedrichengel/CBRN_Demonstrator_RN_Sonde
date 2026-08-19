@@ -5,8 +5,8 @@
 
 // ---- Firmware-Version (X.YY) ----
 #define FIRMWARE_VERSION_MAJOR  2
-#define FIRMWARE_VERSION_MINOR  20
-#define FIRMWARE_VERSION_STR    "2.20"
+#define FIRMWARE_VERSION_MINOR  21
+#define FIRMWARE_VERSION_STR    "2.21"
 
 // ---- Debug ----
 #define DEBUG_MODE              false
@@ -43,13 +43,15 @@
 // ---- BLE / Sources ----
 #define MAX_SOURCES         16
 #define SOURCE_TIMEOUT_MS   5000
-// Zweistufige RSSI-Mittelung:
-//   1) Alle Samples einer RSSI_BIN_MS-Periode -> Sekunden-Mittelwert
-//   2) Moving Average ueber die letzten RSSI_AVG_SECS Sekunden-Mittelwerte
-// Gesamt-Mittelungszeit = RSSI_BIN_MS * RSSI_AVG_SECS / 1000 Sekunden.
+// Zweistufige RSSI-Glaettung:
+//   1) Alle Samples einer RSSI_BIN_MS-Periode -> Sekunden-MEDIAN
+//      (robust gegen einzelne Ausreisser durch Reflexion/Abschattung)
+//   2) Moving Average ueber die letzten RSSI_AVG_SECS Sekunden-Mediane
+// Gesamt-Glaettungszeit = RSSI_BIN_MS * RSSI_AVG_SECS / 1000 Sekunden.
 // Anzeige aktualisiert sich nur bei Bin-Abschluss (1x pro Sekunde).
-#define RSSI_BIN_MS         1000
-#define RSSI_AVG_SECS       3
+#define RSSI_BIN_MS          1000
+#define RSSI_AVG_SECS        3
+#define RSSI_BIN_MAX_SAMPLES 16   // Sample-Puffer je Bin (100ms-Advertising -> ~10/s)
 
 // ---- Buttons ----
 #define BTN_DEBOUNCE_MS     30
@@ -62,6 +64,16 @@
 
 // ---- UI ----
 #define MENU_ITEMS          7
+
+// ---- Diagnose-Modus ----
+//   Im Realbetrieb verraten Quellen-Name, Nuklid, RSSI und Quellenzahl auf dem
+//   Gauge-Screen die Simulationsmechanik. Diagnose-Anzeigen sind deshalb per
+//   Default AUS und lassen sich zur Laufzeit ueber den Menuepunkt
+//   "Quellen-Liste" mit PIN-Eingabe freischalten. Die Freischaltung wird
+//   bewusst NICHT im NVS gespeichert -> nach Neustart wieder aus.
+#define DIAG_MODE_DEFAULT   false
+#define DIAG_PIN            "2506"
+#define DIAG_PIN_LEN        4
 
 // ---- WLAN / OTA-Update-Portal ----
 //   Im Menue aktivierbar: Geraet stoppt BLE, oeffnet einen WPA2-gesicherten

@@ -159,29 +159,33 @@ void drawScreenGauge(float dose_usvh, int active_count, int calibrating_count,
   gfx->setCursor(5, 78);
   gfx->print(rr.unit);
 
-  gfx->setTextSize(1);
-  gfx->setTextColor(COL_LGRAY);
-  gfx->setCursor(380, 30);
-  gfx->printf("Quellen: %d", active_count);
-  if (best != nullptr) {
-    gfx->setCursor(380, 45);
-    gfx->print("Naechste:");
-    gfx->setTextColor(COL_CYAN);
-    gfx->setCursor(380, 58);
-    gfx->print(best->name);
+  // Quellen-Diagnose (Anzahl, Name, Nuklid, RSSI) nur im Diagnose-Modus -
+  // im Realbetrieb verraet sie die Simulationsmechanik.
+  if (diagEnabled) {
+    gfx->setTextSize(1);
     gfx->setTextColor(COL_LGRAY);
-    gfx->setCursor(380, 71);
-    gfx->print(nuklid_name[best->nuklid]);
-    gfx->setCursor(380, 84);
-    gfx->printf("RSSI %.0fdBm", best->rssi_smooth);
-  } else if (calibrating_count > 0) {
-    gfx->setCursor(380, 55);
-    gfx->setTextColor(COL_YELLOW);
-    gfx->print("Kalibrierung...");
-  } else {
-    gfx->setCursor(380, 55);
-    gfx->setTextColor(COL_DGRAY);
-    gfx->print("Kein Signal");
+    gfx->setCursor(380, 30);
+    gfx->printf("Quellen: %d", active_count);
+    if (best != nullptr) {
+      gfx->setCursor(380, 45);
+      gfx->print("Naechste:");
+      gfx->setTextColor(COL_CYAN);
+      gfx->setCursor(380, 58);
+      gfx->print(best->name);
+      gfx->setTextColor(COL_LGRAY);
+      gfx->setCursor(380, 71);
+      gfx->print(nuklidName(best->nuklid));
+      gfx->setCursor(380, 84);
+      gfx->printf("RSSI %.0fdBm", best->rssi_smooth);
+    } else if (calibrating_count > 0) {
+      gfx->setCursor(380, 55);
+      gfx->setTextColor(COL_YELLOW);
+      gfx->print("Kalibrierung...");
+    } else {
+      gfx->setCursor(380, 55);
+      gfx->setTextColor(COL_DGRAY);
+      gfx->print("Kein Signal");
+    }
   }
 
   drawTopBar();
@@ -277,7 +281,7 @@ void drawScreenSources() {
   gfx->setTextColor(COL_LGRAY);
   gfx->setCursor(15, 95);
   gfx->printf("Nuklid: %s   Sender-Nr: %03d   TX: %+d dBm",
-              nuklid_name[s.nuklid], s.sender_nr, s.tx_power);
+              nuklidName(s.nuklid), s.sender_nr, s.tx_power);
 
   float maxd = s.max_dose_usvh;
   RangeResult rrMax = autoRange(maxd, maxd);
@@ -313,6 +317,40 @@ void drawScreenSources() {
   gfx->setTextColor(COL_DGRAY);
   gfx->setCursor(15, 222);
   gfx->print("A: vor   B: zurueck   HW: zurueck zum Menue");
+
+  drawTopBar();
+}
+
+// ====================== SCREEN: PIN ==============================
+//   Freischaltung des Diagnose-Modus (Quellen-Liste + Gauge-Infos).
+//   A: Ziffer hochzaehlen, B: naechste Stelle, HW kurz: bestaetigen,
+//   HW lang: abbrechen. Eingabe-State liegt in state.h (pinDigits/pinPos).
+void drawScreenPin() {
+  gfx->setTextSize(2);
+  gfx->setTextColor(COL_CYAN);
+  gfx->setCursor(15, 28);
+  gfx->print("Diagnose - PIN eingeben");
+
+  const int box_w = 60, box_h = 80, gap = 25;
+  int total = DIAG_PIN_LEN * box_w + (DIAG_PIN_LEN - 1) * gap;
+  int x0 = (536 - total) / 2;
+  int y0 = 80;
+
+  for (int i = 0; i < DIAG_PIN_LEN; i++) {
+    int x = x0 + i * (box_w + gap);
+    uint16_t frame = (i == pinPos) ? COL_CYAN : COL_DGRAY;
+    gfx->drawRect(x,     y0,     box_w,     box_h,     frame);
+    gfx->drawRect(x + 1, y0 + 1, box_w - 2, box_h - 2, frame);
+    gfx->setTextSize(6);
+    gfx->setTextColor(i == pinPos ? COL_WHITE : COL_LGRAY);
+    gfx->setCursor(x + 14, y0 + 18);
+    gfx->printf("%d", pinDigits[i]);
+  }
+
+  gfx->setTextSize(1);
+  gfx->setTextColor(COL_DGRAY);
+  gfx->setCursor(15, 222);
+  gfx->print("A: Ziffer   B: naechste Stelle   HW: OK   HW lang: abbrechen");
 
   drawTopBar();
 }

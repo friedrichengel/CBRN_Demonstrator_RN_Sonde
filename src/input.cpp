@@ -11,13 +11,32 @@
 #include "webportal.h"
 #include "display.h"
 
+// Quellen-Liste = Diagnose: ohne Freischaltung erst PIN-Eingabe oeffnen
+static void openSourcesOrPin() {
+  if (diagEnabled) {
+    currentScreen = SCR_SOURCES;
+    sourceBrowseIdx = 0;
+  } else {
+    for (int i = 0; i < DIAG_PIN_LEN; i++) pinDigits[i] = 0;
+    pinPos = 0;
+    currentScreen = SCR_PIN;
+  }
+}
+
+static bool pinCorrect() {
+  const char* pin = DIAG_PIN;
+  for (int i = 0; i < DIAG_PIN_LEN; i++)
+    if (pinDigits[i] != (uint8_t)(pin[i] - '0')) return false;
+  return true;
+}
+
 static void handleMenuSelect() {
   menuLastInputMs = millis();
   playClick();
   switch (menuIndex) {
     case 0: switchBleMode(currentBleMode == BLE_NORMAL ? BLE_LR : BLE_NORMAL); break;
     case 1: setAudioEnabled(!audioEnabled);                                     break;
-    case 2: currentScreen = SCR_SOURCES; sourceBrowseIdx = 0;                   break;
+    case 2: openSourcesOrPin();                                                 break;
     case 3: currentScreen = SCR_OWNER;                                          break;
     case 4: initWifiPortal(); currentScreen = SCR_WIFI;                         break;
     case 5: setDisplayFlipped(!displayFlipped);                                 break;
@@ -52,6 +71,24 @@ void handleButtons() {
     else if (eHW == BTN_SHORT) { currentScreen = SCR_MENU; }
     else if (eA  == BTN_SHORT) { sourceBrowseIdx++; }
     else if (eB  == BTN_SHORT) { sourceBrowseIdx--; }
+  }
+  else if (currentScreen == SCR_PIN) {
+    if      (eA  == BTN_SHORT) { pinDigits[pinPos] = (pinDigits[pinPos] + 1) % 10; playClick(); }
+    else if (eB  == BTN_SHORT) { pinPos = (pinPos + 1) % DIAG_PIN_LEN;             playClick(); }
+    else if (eHW == BTN_LONG)  { currentScreen = SCR_MENU; menuLastInputMs = millis(); }
+    else if (eHW == BTN_SHORT) {
+      playClick();
+      if (pinCorrect()) {
+        diagEnabled = true;   // bis zum Neustart (bewusst nicht im NVS)
+        Serial.println("[UI] Diagnose-Modus freigeschaltet");
+        currentScreen = SCR_SOURCES;
+        sourceBrowseIdx = 0;
+      } else {
+        Serial.println("[UI] Diagnose-PIN falsch");
+        currentScreen = SCR_MENU;
+      }
+      menuLastInputMs = millis();
+    }
   }
   else if (currentScreen == SCR_WIFI) {
     // WLAN-Modus nur per langem HW-Druck verlassen (kurze Drucke ignorieren,

@@ -11,10 +11,29 @@
 
 Source sources[MAX_SOURCES];
 
-const char* nuklid_name[9] = {
+static const char* nuklid_name[] = {
   "", "Cs-137", "Co-60", "Am-241", "Ir-192",
-  "Ra-226", "Th-232", "U-238", "Pu-239"
+  "Ra-226", "Th-232", "U-238", "Pu-239", "Se-75"
 };
+static const uint8_t NUKLID_COUNT = sizeof(nuklid_name) / sizeof(nuklid_name[0]);
+
+const char* nuklidName(uint8_t idx) {
+  return (idx < NUKLID_COUNT) ? nuklid_name[idx] : "?";
+}
+
+// Median der ersten n Werte (n <= RSSI_BIN_MAX_SAMPLES), Insertion-Sort auf Kopie
+static float medianOf(const int8_t* v, uint16_t n) {
+  int8_t tmp[RSSI_BIN_MAX_SAMPLES];
+  for (uint16_t i = 0; i < n; i++) tmp[i] = v[i];
+  for (uint16_t i = 1; i < n; i++) {
+    int8_t key = tmp[i];
+    int16_t j = i - 1;
+    while (j >= 0 && tmp[j] > key) { tmp[j + 1] = tmp[j]; j--; }
+    tmp[j + 1] = key;
+  }
+  if (n & 1) return (float)tmp[n / 2];
+  return ((float)tmp[n / 2 - 1] + (float)tmp[n / 2]) * 0.5f;
+}
 
 static NimBLEScan* bleScan = nullptr;
 
@@ -71,7 +90,6 @@ class ScanCB : public NimBLEScanCallbacks {
         if (!sources[i].valid && sources[i].sender_nr == sender_nr) { idx = i; break; }
       if (idx >= 0) {
         sources[idx].valid         = true;
-        sources[idx].bin_sum       = 0.0f;
         sources[idx].bin_count     = 0;
         sources[idx].bin_start_ms  = now;
         sources[idx].sec_buf_idx   = 0;
@@ -86,7 +104,6 @@ class ScanCB : public NimBLEScanCallbacks {
       for (int i = 0; i < MAX_SOURCES; i++) if (!sources[i].valid) { idx = i; break; }
       if (idx < 0) return;
       sources[idx].valid          = true;
-      sources[idx].bin_sum        = 0.0f;
       sources[idx].bin_count      = 0;
       sources[idx].bin_start_ms   = now;
       sources[idx].sec_buf_idx    = 0;
@@ -105,15 +122,17 @@ class ScanCB : public NimBLEScanCallbacks {
     s.tx_power       = tx_power;
     s.last_seen      = now;
 
-    // Stufe 1: in aktuelle Sekunden-Bin akkumulieren
-    s.bin_sum   += (float)rssi;
-    s.bin_count += 1;
+    // Stufe 1: Sample in aktuelle Sekunden-Bin aufnehmen (Puffer voll -> Rest
+    // der Sekunde verwerfen, der Median aendert sich dadurch kaum)
+    if (s.bin_count < RSSI_BIN_MAX_SAMPLES) {
+      s.bin_samples[s.bin_count] = (int8_t)constrain(rssi, -128, 127);
+      s.bin_count += 1;
+    }
 
-    // Stufe 2: Bin abgeschlossen? -> Mittelwert in Sek-Ringbuffer, dann
+    // Stufe 2: Bin abgeschlossen? -> Median in Sek-Ringbuffer, dann
     // Moving Average ueber die letzten RSSI_AVG_SECS Sekunden-Werte
     if ((now - s.bin_start_ms) >= RSSI_BIN_MS && s.bin_count > 0) {
-      float bin_mean = s.bin_sum / s.bin_count;
-      s.sec_buf[s.sec_buf_idx] = bin_mean;
+      s.sec_buf[s.sec_buf_idx] = medianOf(s.bin_samples, s.bin_count);
       s.sec_buf_idx = (s.sec_buf_idx + 1) % RSSI_AVG_SECS;
       if (s.sec_buf_count < RSSI_AVG_SECS) s.sec_buf_count++;
 
@@ -123,7 +142,6 @@ class ScanCB : public NimBLEScanCallbacks {
 
       if (s.rssi_smooth > s.rssi_peak) s.rssi_peak = s.rssi_smooth;
 
-      s.bin_sum      = 0.0f;
       s.bin_count    = 0;
       s.bin_start_ms = now;
     }

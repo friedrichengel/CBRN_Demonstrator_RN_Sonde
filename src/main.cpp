@@ -116,6 +116,7 @@ void loop() {
       case SCR_MENU:    drawScreenMenu();                    break;
       case SCR_OWNER:   drawScreenOwner();                   break;
       case SCR_SOURCES: drawScreenSources();                 break;
+      case SCR_PIN:     drawScreenPin();                     break;
     }
     drawVersion();
     gfx->flush();
