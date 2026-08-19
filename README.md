@@ -73,7 +73,7 @@ Inaktivitaets-Timeout im Menue: 20 s ohne Eingabe -> zurueck zur Gauge.
 | 0–1  | `0xFF 0xFF` Company-ID (custom/Test)                            |
 | 2    | `0x02` Protokoll-Version                                        |
 | 3    | Sender-Nr (1–254)                                               |
-| 4    | Nuklid-ID (1–8, siehe `nuklid_name[]` in `src/ble.cpp`)         |
+| 4    | Nuklid-ID (1–9, siehe `nuklid_name[]` in `src/ble.cpp`)         |
 | 5–6  | max. Dosisleistung als Ganzzahl, Big Endian                     |
 | 7    | Einheits-Index: 0=nSv/h, 1=uSv/h, 2=mSv/h, 3=Sv/h               |
 | 8    | TX-Power in dBm (int8) — derzeit +4                              |
