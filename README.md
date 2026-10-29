@@ -1,10 +1,39 @@
 # CBRN-RN Sonde
 
-Trainings-Sonde fuer ein CBRN-RN-Demonstrator-Set. Empfaengt per BLE-Advertising
-die Datenpakete simulierter Strahlungsquellen ("Strahler-NNN") und stellt die
-ortsabhaengig berechnete Dosisleistung als Analog-Gauge + Digitalwert dar.
+[![PlatformIO Build](https://github.com/friedrichengel/CBRN_Demonstrator_RN_Sonde/actions/workflows/build.yml/badge.svg)](https://github.com/friedrichengel/CBRN_Demonstrator_RN_Sonde/actions/workflows/build.yml)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-blue.svg)](LICENSE)
+[![Plattform: ESP32-S3](https://img.shields.io/badge/Plattform-ESP32--S3-lightgrey.svg)](#voraussetzungen--toolchain)
+
+Trainings-Sonde für ein CBRN-RN-Demonstrator-Set. Empfängt per BLE-Advertising
+die Datenpakete simulierter Strahlungsquellen (`Strahler-NNN`) und stellt die
+aus der Signalstärke berechnete „Dosisleistung" als Analog-Gauge + Digitalwert dar.
 
 Hardware: **LilyGO T-Display-S3 AMOLED** (ESP32-S3 R8, 1.91" RM67162 QSPI, 536x240).
+
+> **Haftungsausschluss / Einordnung**
+>
+> - Dies ist ein **privates Hobby-Projekt** und **kein offizielles Produkt oder
+>   Ausbildungsmittel des THW** (Bundesanstalt Technisches Hilfswerk) oder eines
+>   Ortsverbands. Es wird lediglich im Rahmen der Ausbildung verwendet. „THW" ist
+>   ein Kennzeichen der Bundesanstalt Technisches Hilfswerk; dieses Projekt steht
+>   in keiner offiziellen Verbindung dazu.
+> - Das Gerät **misst keine Strahlung und erzeugt keine**. Die angezeigte
+>   „Dosisleistung" ist eine RSSI-basierte Näherung aus der Bluetooth-Signalstärke
+>   der Trainings-Strahler. Die Sonde ist ein **Ausbildungsmittel, kein Dosimeter**
+>   und darf niemals für reale Messungen oder Lagebeurteilungen verwendet werden.
+> - Die Software wird **ohne jede Gewährleistung** bereitgestellt (siehe
+>   [LICENSE](LICENSE)).
+
+## Zugehörige Projekte
+
+| Repository | Inhalt |
+|---|---|
+| [CBRN_Demonstrator_RN_Probe](https://github.com/friedrichengel/CBRN_Demonstrator_RN_Probe) | Firmware der **Strahler** (Trainings-Quellen, BLE-Peripheral mit GATT-Dienst `0x1900`) |
+| CBRN_Demonstrator_RN_Sonde (dieses Repo) | Firmware der **Sonde** (Messgerät-Nachbildung, Referenz für das RSSI-Dosismodell) |
+| [CBRN_Demonstrator_RN_App](https://github.com/friedrichengel/CBRN_Demonstrator_RN_App) | Android-App: Messen wie die Sonde + Konfigurieren der Strahler |
+
+Das ausführliche Bedienungs-[Handbuch](HANDBUCH.md) (auch als [PDF](HANDBUCH.pdf))
+richtet sich an Ausbilder und Gerätebetreuung.
 
 ---
 
@@ -200,6 +229,7 @@ include/
   power.h      Deep Sleep
   input.h      Tasten-Routing pro Screen
   owner.h      Besitzer-Info-Daten
+  webportal.h  WLAN-AP, Webserver, OTA-Update
 
 src/
   main.cpp     setup + loop (Orchestrator)
@@ -213,6 +243,9 @@ src/
   power.cpp    ESP-Deep-Sleep
   input.cpp    Screen-abh. Tasten-Routing
   owner.cpp    OwnerInfo-Struct mit Kontakt-/Besitzer-Daten
+  webportal.cpp WLAN-AP + Webserver + OTA (Arduino-Bordmittel)
+
+partitions_ota.csv   Partitionstabelle mit 2 App-Slots (OTA)
 ```
 
 Versionsangabe wird zentral in `include/config.h` ueber
@@ -221,19 +254,58 @@ sowie im Bootscreen ausgegeben.
 
 ---
 
-## Build & Flash
+## Voraussetzungen / Toolchain
 
-PlatformIO (VS Code):
+| Komponente | Version / Hinweis |
+|---|---|
+| [PlatformIO Core](https://platformio.org/install) | aktuell (CLI oder VS-Code-Erweiterung `platformio.platformio-ide`) |
+| Plattform `espressif32` | wird von PlatformIO automatisch geladen (Arduino-ESP32-Framework) |
+| [Arduino_GFX](https://github.com/moononournation/Arduino_GFX) | Display-Treiber RM67162 QSPI, wird über `lib_deps` geladen |
+| [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino) `^2.1.0` | BLE-Scan inkl. Coded PHY, wird über `lib_deps` geladen |
+| Python 3 | wird von PlatformIO für esptool benötigt |
+
+Es müssen keine Fremdkomponenten manuell installiert werden; alle Abhängigkeiten
+stehen in [platformio.ini](platformio.ini) und werden beim ersten Build
+heruntergeladen. Das Repository enthält keine Binaries außer dem Handbuch-PDF.
+
+## Bauen & Flashen
+
+**Bauen** (Kommandozeile im Projektordner oder VS-Code-Task „Build"):
 
 ```
-pio run -t upload
+pio run -e sonde
+```
+
+Ergebnis: `.pio/build/sonde/firmware.bin` (plus `bootloader.bin` und
+`partitions.bin`).
+
+**Flashen per USB** (Board per USB-C anschließen; beim ersten Mal ggf. mit
+gedrückter Boot-Taste einstecken):
+
+```
+pio run -e sonde -t upload
 pio device monitor -b 115200
 ```
 
+Der Port-Filter `upload_port = /dev/cu.usb*` in `platformio.ini` passt für
+macOS. Unter **Windows** stattdessen z. B. `--upload-port COM5`, unter
+**Linux** `--upload-port /dev/ttyACM0` angeben oder die beiden Zeilen in
+`platformio.ini` anpassen.
+
+**Update per WLAN (OTA)**: Auf einem bereits geflashten Gerät im Menü
+„WLAN / Update" wählen, mit dem AP `CBRN-Sonde-Setup` verbinden und unter
+`http://192.168.4.1` die `firmware.bin` hochladen. Dank zweier App-Slots
+([partitions_ota.csv](partitions_ota.csv)) schaltet das Gerät nach dem
+Neustart auf die neue Firmware um.
+
+**Fertige Builds**: Der GitHub-Actions-Workflow
+[build.yml](.github/workflows/build.yml) baut bei jedem Push und hängt die
+`.bin`-Dateien als Artefakt an; bei Tags `v*` zusätzlich als Release.
+
 Build-Flags (in `platformio.ini`):
-- `qio_opi` Memory-Type fuer OPI-PSRAM (sonst kein 257 KB Canvas)
-- `CONFIG_ESP_TASK_WDT_TIMEOUT_S=15` (Sicherheitspolster fuer NimBLE-Spitzen)
-- `CONFIG_BT_NIMBLE_EXT_ADV=1` (Vorbereitung Coded PHY)
+- `qio_opi` Memory-Type für OPI-PSRAM (sonst kein 257 KB Canvas)
+- `CONFIG_ESP_TASK_WDT_TIMEOUT_S=15` (Sicherheitspolster für NimBLE-Spitzen)
+- `CONFIG_BT_NIMBLE_EXT_ADV=1` (Coded PHY / Long Range)
 - `CONFIG_BT_NIMBLE_ROLE_OBSERVER=1`, alle anderen `=0` (spart Heap)
 
 ---
@@ -246,3 +318,30 @@ Build-Flags (in `platformio.ini`):
 - **Lade-Erkennung (USB):** SW-Heuristik laeuft als Default-Fallback,
   GPIO16 ist als HW-VBUS-Pin vorbereitet (mit `INPUT_PULLDOWN`).
   Anleitung zum Loetmod siehe Abschnitt "Loetmod: VBUS auf GPIO".
+
+---
+
+## Sicherheit
+
+Hinweise zu bewusst akzeptierten Eigenschaften (Diagnose-PIN im Quelltext,
+WLAN-Portal mit festem Passwort und OTA ohne Signatur, unsigniertes
+BLE-Advertising) und zur Meldung von Problemen stehen in
+[SECURITY.md](SECURITY.md).
+
+## Mitwirken
+
+Issues und Pull Requests sind willkommen. Bitte vor größeren Änderungen kurz ein
+Issue eröffnen. Beiträge werden unter der MIT-Lizenz des Projekts aufgenommen.
+
+## Lizenz
+
+Dieses Projekt steht unter der [MIT-Lizenz](LICENSE).
+Copyright (c) 2026 Friedrich Engel.
+
+Verwendete Bibliotheken behalten ihre eigenen Lizenzen: Arduino_GFX
+(BSD-3-Clause), NimBLE-Arduino (Apache-2.0), Arduino-ESP32 (LGPL-2.1),
+ESP-IDF (Apache-2.0). Sie sind nicht im Repository enthalten, sondern werden
+beim Build von PlatformIO geladen.
+
+„THW" ist ein Kennzeichen der Bundesanstalt Technisches Hilfswerk; dieses
+Projekt steht in keiner offiziellen Verbindung dazu.

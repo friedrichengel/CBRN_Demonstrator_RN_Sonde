@@ -1,7 +1,14 @@
 # Handbuch — CBRN-RN Sonde
 
 **Trainings-Messgerät (Empfänger) für den CBRN-RN-Demonstrator**
-THW OV Berlin Friedrichshain-Kreuzberg · Firmware 2.21
+Privates Ausbildungsprojekt · Firmware 2.21
+
+> **Hinweis:** Dies ist ein **privates Projekt** und **kein offizielles Produkt
+> oder Ausbildungsmittel des THW** (Bundesanstalt Technisches Hilfswerk). Es wird
+> lediglich im Rahmen der Ausbildung eines Ortsverbands verwendet. „THW" ist ein
+> Kennzeichen der Bundesanstalt Technisches Hilfswerk; es besteht keine
+> offizielle Verbindung. Quelltext und Lizenz (MIT):
+> <https://github.com/friedrichengel/CBRN_Demonstrator_RN_Sonde>
 
 ---
 
@@ -446,8 +453,12 @@ Bewusst **nicht** gespeichert:
 
 Die vierstellige PIN ist in der Firmware hinterlegt und für alle Geräte des
 Sets gleich. Sie ist bei der Gerätebetreuung zu erfragen und sollte nicht an
-Übungsteilnehmer weitergegeben werden.
+Übungsteilnehmer weitergegeben werden. Da der Quelltext der Firmware
+öffentlich ist, ist die PIN kein Sicherheitsmerkmal, sondern nur eine
+Hemmschwelle. Wer ein eigenes Set betreibt, kann sie in `include/config.h`
+(`DIAG_PIN`) ändern und die Firmware neu bauen.
 
 ---
 
-*Handbuch zur Firmware 2.21 · THW OV Berlin Friedrichshain-Kreuzberg*
+*Handbuch zur Firmware 2.21 · Privates Projekt, kein offizielles THW-Produkt ·
+Quelltext: <https://github.com/friedrichengel/CBRN_Demonstrator_RN_Sonde> · Lizenz: MIT*

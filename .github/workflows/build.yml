@@ -1,0 +1,60 @@
+name: PlatformIO Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/packages
+            ~/.platformio/platforms
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
+
+      - name: Build firmware (sonde)
+        run: pio run -e sonde
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p out
+          # firmware.bin: direkt im WLAN-Portal der Sonde hochladbar (OTA)
+          cp .pio/build/sonde/firmware.bin   out/sonde-firmware.bin
+          # Fuer Erstinstallation per USB (esptool): Bootloader + Partitionstabelle
+          cp .pio/build/sonde/bootloader.bin out/sonde-bootloader.bin
+          cp .pio/build/sonde/partitions.bin out/sonde-partitions.bin
+
+      - name: Upload firmware as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonde-firmware
+          path: out/
+
+      - name: Attach firmware to GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          generate_release_notes: true
